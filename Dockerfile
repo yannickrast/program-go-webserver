@@ -2,6 +2,10 @@
 # latest golang version
 FROM golang:latest
 
+LABEL maintainer="Yannick Rast" \
+      name="webprogrammierung" \
+      version="0.1"
+
 WORKDIR /app
 
 # Download necessary Go modules
