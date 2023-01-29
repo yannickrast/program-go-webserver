@@ -1,11 +1,11 @@
 {{ define "base" }}
-<html>
-{{ template "header" . }}
-    <body>
-        <div class=container>
-            {{ template "content" . }}
-        </div>
-    {{ template "footer" . }}
-    </body>
+<!DOCTYPE html>
+<html lang="en">
+
+    <!-- favicon -->
+	<link rel="shortcut icon" type="image/x-icon" href="../static/assets/images/icon.png">
+
+    {{ template "content" . }}
+
 </html>
 {{ end }}

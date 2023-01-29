@@ -1,5 +1,98 @@
 {{ define "content" }}
-<a href="/">Home</a>
-<h1>{{ .Title }}</h1>
-{{ .Content }}
+
+    <!-- head -->
+    <head>
+
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+        <!-- css-import -->
+        <link rel="stylesheet" type="text/css" href="../static/assets/css/init.css">
+        <link rel="stylesheet" type="text/css" href="../static/assets/css/main.css">
+        <link rel="stylesheet" type="text/css" href="../static/assets/css/{{ .Page.CustomCSS }}">
+
+    </head>
+    <!-- head-end -->
+
+
+    <!-- body -->
+    <body>
+
+        <!-- wrapper -->
+        <div class="wrapper">     
+   
+            <!-- header -->
+            <header>
+
+                <!-- logo -->
+                <div id="logo"><a href="/"><img src="../static/assets/images/logo.png" alt="Mein Portfolio"></a></div>		
+
+                <!-- mainnavigation -->
+                <nav id="mainnavigation">
+                    <ul>
+                        {{ range .MainLinks }}
+                        <li><a href="{{ .URL }}">{{ .Title }}</a></li> 
+                        {{ end }}       
+                    </ul>
+                </nav>
+
+            </header>
+            <!-- header-end -->
+
+
+            <!-- main -->
+            <main>
+                <h1>{{ .Page.Title }}</h1>
+                <h6>{{ .Page.Description }}</h6>
+                <div class="inner">
+                    {{ .Page.Content }}
+                    <div id="portfolioSection">
+                        <ul>
+                            {{ range .ArticleLinks }}
+                            <li class="portfolioBox">
+                                <a href='{{ .URL }}'>                      
+                                    <div class="portfolioImage">
+                                        <img src="../static/assets/images/{{ .Tag }}0.png" alt="{{ .URL }}">  
+                                    </div>
+                                    <div class="portfolioTitle">
+                                        <h2>{{ .Title }}</h2>
+                                    </div>
+                                </a>
+                            </li>
+                            {{ end }}
+                        </ul>
+                    </div>
+                </inner>
+            </main>    
+            <!-- main-end -->
+
+
+            <!-- footer -->
+            <footer>
+
+                <!-- signature -->
+                &copy; 2023 Yannick Rast 38364 Schöningen
+
+                <!-- footernavigation -->
+                <nav id="footernavigation">
+                    <ul>
+                        {{ range .FooterLinks }}
+                        <li><a href="{{ .URL }}">{{ .Title }}</a></li> 
+                        {{ end }} 
+                    </ul>
+                </nav>  
+
+            </footer>
+            <!-- footer-end -->
+
+            <!-- javascript-import -->
+            <script src="../static/assets/js/main.js"></script>
+            <script src="../static/assets/js/{{ .Page.CustomJS }}"></script>
+
+        </div>  
+        <!-- wrapper-end -->  
+
+    </body>   
+    <!-- body-end -->
+
 {{ end }}

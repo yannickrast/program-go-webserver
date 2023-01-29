@@ -1,0 +1,7 @@
+[
+    {
+      "title": "TestArticle",
+      "content": "<p>TEST</p>",
+      "images": ["testImage.png", "test2Image.png"]
+    }
+]
