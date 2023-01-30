@@ -11,6 +11,7 @@ import (
 	"io/ioutil"
 	"log"
 	"net/http"
+	"os"
 	"path/filepath"
 	"strings"
 	"time"
@@ -65,8 +66,10 @@ func (oid *ObjID) Hex() string {
 var (
 	zipFile = "files.zip"
 
-	stcDir = flag.String("img", "./static", "Static -Dir.")
+	flsDir = flag.String("fls", "./files", "Files -Dir.")
+	stcDir = flag.String("stc", "./static", "Static -Dir.")
 	tmpDir = flag.String("tmp", "./templates", "Template -Dir.")
+	tprDir = flag.String("tpr", "./temporary", "Temporary -Dir.")
 
 	pageTemplate = "page.templ.html"
 	baseTemplate = "base.templ.html"
@@ -91,6 +94,9 @@ func main() {
 	pageCollection = client.Database("mongodb").Collection("pages")
 	linkCollection = client.Database("mongodb").Collection("links")
 
+	// TEST CREATETEMP
+	createTempData()
+
 	// Datenbankinitialisierung
 	initMongo(ctx)
 
@@ -106,6 +112,10 @@ func main() {
 	// Static-Fileserver
 	staticFS := http.FileServer(http.Dir(*stcDir))
 	http.Handle("/static/", http.StripPrefix("/static/", staticFS))
+
+	// Temporary-Fileserver
+	temporaryFS := http.FileServer(http.Dir(*tprDir))
+	http.Handle("/temporary/", http.StripPrefix("/temporary/", temporaryFS))
 
 	// Template-Page-Handler
 	http.HandleFunc("/", makePageHandler("index"))
@@ -341,7 +351,7 @@ func readInData(fileName string) (Pages, error) {
 
 	var data Pages
 
-	zipPath := "./files/" + zipFile
+	zipPath := *flsDir + "/" + zipFile
 
 	zip, err := zip.OpenReader(zipPath)
 	check(err)
@@ -362,18 +372,60 @@ func readInData(fileName string) (Pages, error) {
 	return data, nil
 }
 
-/*func readAll(zip *zip.File) []byte {
+func createTempData() {
 
-	fc, err := zip.Open()
+	tempDir := "./temporary/"
+
+	zipPath := *flsDir + "/" + zipFile
+
+	zf, err := zip.OpenReader(zipPath)
+	check(err)
+	defer closeFile(zf)
+
+	if _, err := os.Stat(tempDir); os.IsNotExist(err) {
+		err := os.Mkdir(tempDir, os.ModePerm)
+		if err != nil {
+			log.Print(err)
+		}
+	}
+
+	for _, file := range zf.File {
+
+		// prüft Datei, ob diese ein Verzeichnis ist
+		if !strings.Contains(file.Name, ".") {
+			if _, err := os.Stat(tempDir + file.Name); os.IsNotExist(err) {
+				err := os.Mkdir(tempDir+file.Name, os.ModePerm)
+				if err != nil {
+					log.Print(err)
+				}
+			}
+		}
+
+		if strings.Contains(file.Name, ".") {
+			tempFile, err := os.Create(tempDir + file.Name)
+			log.Print(tempDir + file.Name)
+			if err != nil {
+				log.Print("Temporäre Datei konnte nicht erzeugt werden, Grund: ", err)
+			}
+
+			bytes, err := tempFile.Write(readContent(file))
+			if err != nil {
+				log.Print(err, bytes, " Bytes wurden in die temporäre Datei geschrieben")
+			}
+		}
+	}
+}
+
+func readContent(file *zip.File) []byte {
+	fc, err := file.Open()
 	check(err)
 	defer closeFile(fc)
 
-	content, _ := ioutil.ReadAll(fc)
-
+	content, err := ioutil.ReadAll(fc)
 	check(err)
 
 	return content
-}*/
+}
 
 func convertToTag(pageTitle string) string {
 

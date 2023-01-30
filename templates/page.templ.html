@@ -7,9 +7,9 @@
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
         <!-- css-import -->
-        <link rel="stylesheet" type="text/css" href="../static/assets/css/init.css">
-        <link rel="stylesheet" type="text/css" href="../static/assets/css/main.css">
-        <link rel="stylesheet" type="text/css" href="../static/assets/css/{{ .Page.CustomCSS }}">
+        <link rel="stylesheet" type="text/css" href="../temporary/assets/css/init.css">
+        <link rel="stylesheet" type="text/css" href="../temporary/assets/css/main.css">
+        <link rel="stylesheet" type="text/css" href="../temporary/assets/css/{{ .Page.CustomCSS }}">
 
     </head>
     <!-- head-end -->
@@ -25,7 +25,7 @@
             <header>
 
                 <!-- logo -->
-                <div id="logo"><a href="/"><img src="../static/assets/images/logo.png" alt="Mein Portfolio"></a></div>		
+                <div id="logo"><a href="/"><img src="../temporary/assets/images/logo.png" alt="Mein Portfolio"></a></div>		
 
                 <!-- mainnavigation -->
                 <nav id="mainnavigation">
@@ -52,7 +52,7 @@
                             <li class="portfolioBox">
                                 <a href='{{ .URL }}'>                      
                                     <div class="portfolioImage">
-                                        <img src="../static/assets/images/{{ .Tag }}0.png" alt="{{ .URL }}">  
+                                        <img src="../temporary/assets/images/{{ .Tag }}0.png" alt="{{ .URL }}">  
                                     </div>
                                     <div class="portfolioTitle">
                                         <h2>{{ .Title }}</h2>
@@ -86,8 +86,8 @@
             <!-- footer-end -->
 
             <!-- javascript-import -->
-            <script src="../static/assets/js/main.js"></script>
-            <script src="../static/assets/js/{{ .Page.CustomJS }}"></script>
+            <script src="../temporary/assets/js/main.js"></script>
+            <script src="../temporary/assets/js/{{ .Page.CustomJS }}"></script>
 
         </div>  
         <!-- wrapper-end -->  
