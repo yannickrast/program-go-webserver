@@ -1,0 +1,33 @@
+{{ define "content" }}
+
+    <!-- article content -->
+    <div class="inner">
+
+        {{ .Page.Content }}
+
+        <!-- Slider -->
+        <div class="slideshow">
+
+            {{ range $index, $element := .Page.Images }}
+            <div class="slide">
+                <img src="../temporary/assets/images/{{ $element }}" alt="{{ $element }}" class="slide-bild">
+            </div>
+            {{ end }}
+
+            <a class="pfeil pfeil-links" onclick="umschalten(-1)"><span>&#10094;</span></a>
+            <a class="pfeil pfeil-rechts" onclick="umschalten(1)"><span>&#10095;</span></a>
+
+            <ol class="indikatorenliste">
+
+                {{ range $index, $element := .Page.Images }}
+                <li class="indikator" onclick="springeZuEintrag({{ $index }})">&#8226;</li>
+                {{ end }}
+
+            </ol>
+        </div>
+    <!-- Slider-Ende -->
+
+    </div>
+    <!-- article content-end -->
+
+{{ end }}

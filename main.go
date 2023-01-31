@@ -25,6 +25,7 @@ import (
 
 type TemplateData struct {
 	Page         Page  `bson:"page,omitempty"`
+	IndexLink    Link  `bson:"indexLink,omitempty"`
 	MainLinks    Links `bson:"mainLinks,omitempty"`
 	FooterLinks  Links `bson:"footerLinks,omitempty"`
 	ArticleLinks Links `bson:"articleLinks,omitempty"`
@@ -71,11 +72,15 @@ var (
 	tmpDir = flag.String("tmp", "./templates", "Template -Dir.")
 	tprDir = flag.String("tpr", "./temporary", "Temporary -Dir.")
 
-	pageTemplate = "page.templ.html"
-	baseTemplate = "base.templ.html"
+	indexTemplate   = "index.templ.html"
+	pageTemplate    = "page.templ.html"
+	articleTemplate = "article.templ.html"
+	baseTemplate    = "base.templ.html"
 
 	pageCollection *mongo.Collection
 	linkCollection *mongo.Collection
+
+	indexTag = "portfolio"
 )
 
 func main() {
@@ -198,28 +203,34 @@ func makePageHandler(pageType string) http.HandlerFunc {
 
 	return func(w http.ResponseWriter, r *http.Request) {
 
-		var pageTitle string
+		var pageTag string
+		templateName := pageTemplate // Templatebezeichnung, Standard: page
 
 		switch pageType {
 		case "index":
-			pageTitle = "Einleitung"
+			pageTag = indexTag
+			templateName = indexTemplate
 		case "main":
-			pageTitle = r.URL.Path[len("/main/"):]
+			pageTag = r.URL.Path[len("/main/"):]
 		case "footer":
-			pageTitle = r.URL.Path[len("/footer/"):]
+			pageTag = r.URL.Path[len("/footer/"):]
 		case "article":
-			pageTitle = r.URL.Path[len("/article/"):]
+			pageTag = r.URL.Path[len("/article/"):]
 		}
-
-		log.Print(pageTitle)
 
 		var data TemplateData
 
-		page, err := loadPage(pageType, pageTitle)
+		// holt page aus DB
+		page, err := loadPage(pageType, pageTag)
 		if err != nil {
 			log.Println(err)
 		}
 
+		// holt links aus DB
+		indexLink, err := loadIndexLink()
+		if err != nil {
+			log.Println(err)
+		}
 		mainLinks, err := loadLinks("main")
 		if err != nil {
 			log.Println(err)
@@ -230,11 +241,12 @@ func makePageHandler(pageType string) http.HandlerFunc {
 		}
 
 		data.Page = page
+		data.IndexLink = indexLink
 		data.MainLinks = mainLinks
 		data.FooterLinks = footerLinks
 		data.ArticleLinks = nil
 
-		if pageTitle == "portfolio" {
+		if pageType == "index" {
 			articles, err := loadLinks("article")
 			if err != nil {
 				log.Println(err)
@@ -242,9 +254,14 @@ func makePageHandler(pageType string) http.HandlerFunc {
 			data.ArticleLinks = articles
 		}
 
-		log.Print(data.ArticleLinks)
+		if len(page.Images) > 1 {
+			log.Print("es hat funzt")
+			templateName = articleTemplate
+		}
 
-		err = renderPage(w, data, pageTemplate)
+		log.Println("Generiere Seite: ", page.Title)
+
+		err = renderPage(w, data, templateName)
 		if err != nil {
 			log.Println(err)
 		}
@@ -288,6 +305,33 @@ func loadPage(pageType string, pageTag string) (Page, error) {
 	bson.Unmarshal(bsonBytes, &page)
 
 	return page, nil
+}
+
+func loadIndexLink() (Link, error) {
+
+	// Kontext
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	var link Link // Link
+
+	// READ LINK
+	filter := bson.M{"type": "index"} // Filter
+
+	var resLink bson.M // Element
+	if err := linkCollection.FindOne(ctx, filter).Decode(&resLink); err != nil {
+		log.Printf("could not read form db: %v", err)
+	}
+
+	bsonBytes, err := bson.Marshal(resLink)
+
+	if err != nil {
+		log.Printf("could not convert to bson: %v", err)
+	}
+
+	bson.Unmarshal(bsonBytes, &link)
+
+	return link, nil
 }
 
 func loadLinks(linkType string) (Links, error) {

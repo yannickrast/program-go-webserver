@@ -1,0 +1,21 @@
+{{ define "content" }}
+
+                <!-- portfolioSection -->
+                <div class="inner">
+                    <div id="portfolioSection">
+                        <ul>
+                            {{ range .ArticleLinks }}
+                                <a class="portfolioLink" href='{{ .URL }}'>   
+                                    <li class="portfolioBox" style="background-image: url('../temporary/assets/images/{{ .CoverImage }}');">                   
+                                            <div class="portfolioTitle">
+                                                <h2>{{ .Title }}</h2>
+                                            </div>
+                                    </li>
+                                </a>
+                            {{ end }}
+                        </ul>
+                    </div>
+                </div>
+                <!-- portfolioSection-end -->
+
+{{ end }}
