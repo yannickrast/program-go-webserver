@@ -1,3 +1,13 @@
+/*
+Das Package main dient zur Erzeugung eines Webservers auf
+html/template-Basis. Die darzustellenden Rohdaten werden
+dabei bis auf einige Ausnahmen (größere Binärdateien)
+in einer mongodb-Datenbank abgespeichert.
+
+Autor: Yannick Rast, m29264
+Datum: 31.01.2023
+Kurs: BFO - Webprogrammierung 2022/2023
+*/
 package main
 
 import (
@@ -24,70 +34,73 @@ import (
 )
 
 type TemplateData struct {
-	Page         Page  `bson:"page,omitempty"`
-	IndexLink    Link  `bson:"indexLink,omitempty"`
-	MainLinks    Links `bson:"mainLinks,omitempty"`
-	FooterLinks  Links `bson:"footerLinks,omitempty"`
-	ArticleLinks Links `bson:"articleLinks,omitempty"`
+	Page         Page  `bson:"page,omitempty"`         // Darzustellende Page
+	IndexLink    Link  `bson:"indexLink,omitempty"`    // Indexreferenz
+	MainLinks    Links `bson:"mainLinks,omitempty"`    // Mainnavigationreferenzen
+	FooterLinks  Links `bson:"footerLinks,omitempty"`  // Footernavigationreferenzen
+	ArticleLinks Links `bson:"articleLinks,omitempty"` // Articlereferenzen
 }
 
 type Page struct {
-	ID          primitive.ObjectID `bson:"_id,omitempty"`
-	Type        string             `bson:"type,omitempty"`
-	Tag         string             `bson:"tag,omitempty"`
-	Title       string             `bson:"title,omitempty"`
-	Description string             `bson:"description,omitempty"`
-	Content     template.HTML      `bson:"content,omitempty"`
-	CustomCSS   string             `bson:"customCSS,omitempty"`
-	CustomJS    string             `bson:"customScript,omitempty"`
-	Images      []string           `bson:"images,omitempty"`
+	ID          primitive.ObjectID `bson:"_id,omitempty"`          // Page-ObjectID
+	Type        string             `bson:"type,omitempty"`         // Page-Typ
+	Tag         string             `bson:"tag,omitempty"`          // Page-Tag
+	Title       string             `bson:"title,omitempty"`        // Page-Titel
+	Description string             `bson:"description,omitempty"`  // Page-Inhaltsbeschreibung
+	Content     template.HTML      `bson:"content,omitempty"`      // Page-Inhalt
+	CustomCSS   string             `bson:"customCSS,omitempty"`    // spezifische CSS-Datei
+	CustomJS    string             `bson:"customScript,omitempty"` // spezifische JS-Datei
+	Images      []string           `bson:"images,omitempty"`       // Bilder der Page
 }
 
-type Pages []Page
+type Pages []Page // Page-Array
 
 type Link struct {
-	ID         primitive.ObjectID `bson:"_id,omitempty"`
-	Type       string             `bson:"type,omitempty"`
-	Tag        string             `bson:"tag,omitempty"`
-	Title      string             `bson:"title,omitempty"`
-	URL        string             `bson:"url,omitempty"`
-	CoverImage string             `bson:"coverImage,omitempty"`
+	ID         primitive.ObjectID `bson:"_id,omitempty"`        // Link-ObjectID
+	Type       string             `bson:"type,omitempty"`       // Link-Typ
+	Tag        string             `bson:"tag,omitempty"`        // Link-Tag
+	Title      string             `bson:"title,omitempty"`      // Link-Titel
+	URL        string             `bson:"url,omitempty"`        // URL
+	CoverImage string             `bson:"coverImage,omitempty"` // Bildcover (bei Artikel)
 }
 
-type Links []Link
+type Links []Link // Link-Array
 
 type ObjID struct {
-	Value primitive.ObjectID `bson:"_id" json:"_id"`
+	Value primitive.ObjectID `bson:"_id" json:"_id"` // ObjectID
 }
 
 func (oid *ObjID) Hex() string {
-	return oid.Value.Hex()
+	return oid.Value.Hex() // erzeugte ObjectID
 }
 
 var (
-	zipFile = "files.zip"
+	zipFile = "files.zip" // Rohdaten-Zip
 
-	flsDir = flag.String("fls", "./files", "Files -Dir.")
-	stcDir = flag.String("stc", "./static", "Static -Dir.")
-	tmpDir = flag.String("tmp", "./templates", "Template -Dir.")
-	tprDir = flag.String("tpr", "./temporary", "Temporary -Dir.")
+	flsDir = flag.String("fls", "./files", "Files -Dir.")         // Dateiverzeichnis
+	stcDir = flag.String("stc", "./static", "Static -Dir.")       // Static-Verzeichnis
+	tmpDir = flag.String("tmp", "./templates", "Template -Dir.")  // Template-Verzeichnis
+	tprDir = flag.String("tpr", "./temporary", "Temporary -Dir.") // temporäres Verzeichnis
 
-	indexTemplate   = "index.templ.html"
-	pageTemplate    = "page.templ.html"
-	articleTemplate = "article.templ.html"
-	baseTemplate    = "base.templ.html"
+	indexTemplate = "index.templ.html" // Index-Template-Bezeichnung
+	pageTemplate  = "page.templ.html"  // Page-Template-Bezeichnung
+	slideTemplate = "slide.templ.html" // Slide-Show-Template-Bezeichnung
+	baseTemplate  = "base.templ.html"  // Index-Template-Bezeichnung
 
-	pageCollection *mongo.Collection
-	linkCollection *mongo.Collection
+	pageCollection *mongo.Collection // mongodb-Collection mit Pages
+	linkCollection *mongo.Collection // mongodb-Collection mit Links
 
-	indexTag = "portfolio"
+	indexTag = "portfolio" // Tag der Index-Page
 )
 
+// main-func zur Ausführung des Webservers
 func main() {
 
+	// Kontext
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
+	// Verbindungsaufbau zur Datenbank
 	opt := options.Client().ApplyURI("mongodb://root:rootpassword@mongodb_container:27017")
 	client, err := mongo.Connect(ctx, opt)
 	if err != nil {
@@ -96,23 +109,16 @@ func main() {
 	if err := client.Ping(ctx, readpref.Primary()); err != nil {
 		log.Fatalln(err)
 	}
+
+	// Initialisierung der Collections
 	pageCollection = client.Database("mongodb").Collection("pages")
 	linkCollection = client.Database("mongodb").Collection("links")
 
-	// TEST CREATETEMP
-	createTempData()
+	initMongo(ctx) // Datenbankinitialisierung
 
-	// Datenbankinitialisierung
-	initMongo(ctx)
+	createTempData() // extrahiert die Rohdaten in ein temporäres Verzeichnis
 
-	// enthaltene IDs aus der Datenbank
-	ids, err := allIds(ctx)
-	log.Println(ids)
-	if err != nil {
-		log.Fatalln(err)
-	}
-
-	flag.Parse()
+	flag.Parse() // übergibt Flags
 
 	// Static-Fileserver
 	staticFS := http.FileServer(http.Dir(*stcDir))
@@ -135,21 +141,20 @@ func main() {
 	}
 }
 
+// initMongo dient zur Initialisierung der Collections in der DB
 func initMongo(ctx context.Context) {
 
 	// liest Datenbank-Daten aus JSON-Datei
-	pages, error := readInData("data/pages.json")
+	pages, err := readInData("data/pages.json")
 
-	if error != nil {
-		log.Fatalln("Daten konnten nicht eingelesen werden!")
+	if err != nil {
+		log.Fatalln("Daten konnten nicht eingelesen werden: ", err)
 	}
 
 	// ermittelt für jede Page den jeweiligen Link und fügt beide der Datenbank hinzu
 	for _, pageEntry := range pages {
 
-		pageEntry.Tag = convertToTag(pageEntry.Title)
-
-		log.Print("tag ", pageEntry.Tag)
+		pageEntry.Tag = convertToTag(pageEntry.Title) // konvertiert den Page-Titel zum Tag
 
 		// Link-Daten
 		var linkEntry Link
@@ -157,6 +162,7 @@ func initMongo(ctx context.Context) {
 		linkEntry.Title = pageEntry.Title
 		linkEntry.Tag = pageEntry.Tag
 
+		// übergibt erstes Bild der Page als Coverimage an den jeweiligen Link
 		if pageEntry.Type == "article" {
 			linkEntry.CoverImage = pageEntry.Images[0]
 		}
@@ -183,29 +189,16 @@ func initMongo(ctx context.Context) {
 	}
 }
 
-func allIds(ctx context.Context) ([]ObjID, error) {
-
-	findOptions := options.Find().SetProjection(bson.M{"_id": 1})
-	allIds, err := pageCollection.Find(ctx, bson.D{}, findOptions)
-	if err != nil {
-		return nil, err
-	}
-
-	var ids []ObjID
-	err = allIds.All(ctx, &ids)
-	if err != nil {
-		return nil, err
-	}
-	return ids, err
-}
-
+// makePageHandler dient zur Rückgabe einer Funktion zur
+// Verwaltung der Übergabedaten bei Aufruf einer Page
 func makePageHandler(pageType string) http.HandlerFunc {
 
 	return func(w http.ResponseWriter, r *http.Request) {
 
-		var pageTag string
-		templateName := pageTemplate // Templatebezeichnung, Standard: page
+		var pageTag string           // Page-Tag
+		templateName := pageTemplate // Templatebezeichnung, Standard: page.template.html
 
+		// prüft auf Page-Typ und ersetzt die Templatebezeichnung beim Fall einer Index-Page
 		switch pageType {
 		case "index":
 			pageTag = indexTag
@@ -218,7 +211,7 @@ func makePageHandler(pageType string) http.HandlerFunc {
 			pageTag = r.URL.Path[len("/article/"):]
 		}
 
-		var data TemplateData
+		var data TemplateData // Übergabedaten
 
 		// holt page aus DB
 		page, err := loadPage(pageType, pageTag)
@@ -240,12 +233,14 @@ func makePageHandler(pageType string) http.HandlerFunc {
 			log.Println(err)
 		}
 
+		// initialisiert Übergabedaten
 		data.Page = page
 		data.IndexLink = indexLink
 		data.MainLinks = mainLinks
 		data.FooterLinks = footerLinks
 		data.ArticleLinks = nil
 
+		// holt im Falle der Index-Page die article-links aus der DB
 		if pageType == "index" {
 			articles, err := loadLinks("article")
 			if err != nil {
@@ -254,21 +249,24 @@ func makePageHandler(pageType string) http.HandlerFunc {
 			data.ArticleLinks = articles
 		}
 
+		// prüft Page darauf, ob es sich um eine Slide-Show-Page handelt
 		if len(page.Images) > 1 {
-			log.Print("es hat funzt")
-			templateName = articleTemplate
+			templateName = slideTemplate
 		}
 
-		log.Println("Generiere Seite: ", page.Title)
+		log.Println("Generiere Seite: ", page.Title) // log mit Page-Titel der generierten Seite
 
-		err = renderPage(w, data, templateName)
+		err = renderPage(w, data, templateName) // Ausführung des Rendervorgangs der Page
 		if err != nil {
 			log.Println(err)
 		}
 	}
 }
 
+// renderPage dient zum Rendern einer Page mitsamt der übergebenen Daten
 func renderPage(w io.Writer, data interface{}, content string) error {
+
+	// fügt Templates zusammen
 	temp, err := template.ParseFiles(
 		filepath.Join(*tmpDir, baseTemplate),
 		filepath.Join(*tmpDir, content),
@@ -276,13 +274,15 @@ func renderPage(w io.Writer, data interface{}, content string) error {
 	if err != nil {
 		return fmt.Errorf("renderPage.Parsefiles: %w", err)
 	}
-	err = temp.ExecuteTemplate(w, "base", data)
+	err = temp.ExecuteTemplate(w, "base", data) // Template wird ausgeführt
 	if err != nil {
 		return fmt.Errorf("renderPage.ExecuteTemplate: %w", err)
 	}
+
 	return nil
 }
 
+// loadPage dient zur Entnahme von Pages aus der DB
 func loadPage(pageType string, pageTag string) (Page, error) {
 
 	// Kontext
@@ -294,19 +294,21 @@ func loadPage(pageType string, pageTag string) (Page, error) {
 	// READ INDEX PAGE
 	filter := bson.M{"type": pageType, "tag": pageTag} // Filter
 
-	var resPage bson.M // erstes Element für Filter
+	var resPage bson.M // entnommene Page
 	pageCollection.FindOne(ctx, filter).Decode(&resPage)
-	bsonBytes, err := bson.Marshal(resPage)
 
+	// "marshalt" die Page als bson.D, und "unmarshalt"
+	// diese anschließend zu einem Byte-Array
+	bsonBytes, err := bson.Marshal(resPage)
 	if err != nil {
 		log.Printf("could not convert to bson: %v", err)
 	}
-
 	bson.Unmarshal(bsonBytes, &page)
 
-	return page, nil
+	return page, err // Page
 }
 
+// loadIndexLink dient zur Entnahme des Index-Links aus der DB
 func loadIndexLink() (Link, error) {
 
 	// Kontext
@@ -317,23 +319,23 @@ func loadIndexLink() (Link, error) {
 
 	// READ LINK
 	filter := bson.M{"type": "index"} // Filter
-
-	var resLink bson.M // Element
+	var resLink bson.M                // Element
 	if err := linkCollection.FindOne(ctx, filter).Decode(&resLink); err != nil {
 		log.Printf("could not read form db: %v", err)
 	}
 
+	// "marshalt" den Link als bson.D, und "unmarshalt"
+	// diesen anschließend zu einem Byte-Array
 	bsonBytes, err := bson.Marshal(resLink)
-
 	if err != nil {
 		log.Printf("could not convert to bson: %v", err)
 	}
-
 	bson.Unmarshal(bsonBytes, &link)
 
-	return link, nil
+	return link, nil // Index-Link
 }
 
+// loadLinks dient zur Entnahme der Links eines bestimmten Typs aus der DB
 func loadLinks(linkType string) (Links, error) {
 
 	// Kontext
@@ -344,88 +346,81 @@ func loadLinks(linkType string) (Links, error) {
 
 	// READ LINKS
 	filter := bson.M{"type": linkType} // Filter
-
 	cursor, err := linkCollection.Find(ctx, filter)
 	if err != nil {
 		log.Printf("could not read form db: %v", err)
 	}
-
-	var result []bson.M // Alle Elemente in Filter
+	var result []bson.M // alle gefilterten Elemente
 	if err = cursor.All(ctx, &result); err != nil {
 		log.Printf("could not convert from bson: %v", err)
 	}
 
+	// Für jeden Link: "marshalt" den Link als bson.D,
+	// und "unmarshalt" diesen anschließend zu einem Byte-Array
 	for _, resLink := range result {
 
-		var link Link
+		var link Link // Link
 
 		bsonBytes, err := bson.Marshal(resLink)
-
 		if err != nil {
 			log.Printf("could not convert to bson: %v", err)
 		}
-
 		bson.Unmarshal(bsonBytes, &link)
 
-		links = append(links, link)
+		links = append(links, link) // fügt Link dem Link-Array hinzu
 	}
 
-	return links, nil
+	return links, nil // Rückgabe der entnommenen Links
 }
 
-type myCloser interface {
+// Interface für ReadCloser
+type zipCloser interface {
 	Close() error
 }
 
-// closeFile is a helper function which streamlines closing
-// with error checking on different file types.
-func closeFile(f myCloser) {
-	err := f.Close()
-	check(err)
-}
-
-// check is a helper function which streamlines error checking
-func check(e error) {
-	if e != nil {
-		panic(e)
-	}
-}
-
+// liest die Page-Daten aus der JSON-Datei aus der Zip
 func readInData(fileName string) (Pages, error) {
 
-	var data Pages
+	var data Pages // Pages
 
-	zipPath := *flsDir + "/" + zipFile
+	zipPath := *flsDir + "/" + zipFile // Dateipfad der Zip
 
-	zip, err := zip.OpenReader(zipPath)
-	check(err)
-	defer closeFile(zip)
+	// öffnet Zip-Datei und erzeugt einen ReadCloser
+	readCloser, err := zip.OpenReader(zipPath)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer readCloser.Close()
 
-	fc, err := zip.Open(fileName)
-
-	content, _ := ioutil.ReadAll(fc)
-
-	jsonData := content
-
+	// liest aus spezifischer Datei
+	fsFile, err := readCloser.Open(fileName)
+	content, _ := ioutil.ReadAll(fsFile)
 	if err != nil {
 		return nil, err
 	}
 
-	json.Unmarshal([]byte(jsonData), &data)
+	// "unmarshalt" eingelesenen Inhalt zu einem byte-array
+	json.Unmarshal([]byte(content), &data)
 
-	return data, nil
+	return data, nil // Rückgabe des eingelesenen Inhalts
 }
 
+// createTempData dient zur Extrahierung und temporären
+// Erzeugung der Website-Rohdaten aus der Zip
 func createTempData() {
 
-	tempDir := "./temporary/"
+	tempDir := *tprDir + "/" // Verzeichnis für temporäre Dateien
 
-	zipPath := *flsDir + "/" + zipFile
+	zipPath := *flsDir + "/" + zipFile // Zip-Pfad
 
-	zf, err := zip.OpenReader(zipPath)
-	check(err)
-	defer closeFile(zf)
+	// erzeugt readCloser und öffnet die Zip-Datei
+	readCloser, err := zip.OpenReader(zipPath)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer readCloser.Close()
 
+	// erzeugt temporären Pfad, wenn nicht vorhanden
 	if _, err := os.Stat(tempDir); os.IsNotExist(err) {
 		err := os.Mkdir(tempDir, os.ModePerm)
 		if err != nil {
@@ -433,7 +428,8 @@ func createTempData() {
 		}
 	}
 
-	for _, file := range zf.File {
+	// durchgeht Dateien der Zip
+	for _, file := range readCloser.File {
 
 		// prüft Datei, ob diese ein Verzeichnis ist
 		if !strings.Contains(file.Name, ".") {
@@ -443,15 +439,14 @@ func createTempData() {
 					log.Print(err)
 				}
 			}
-		}
-
-		if strings.Contains(file.Name, ".") {
+		} else {
 			tempFile, err := os.Create(tempDir + file.Name)
-			log.Print(tempDir + file.Name)
+			log.Print("temporäre Datei erzeugt : ", tempDir+file.Name)
 			if err != nil {
 				log.Print("Temporäre Datei konnte nicht erzeugt werden, Grund: ", err)
 			}
 
+			// liest Inhalt der Datei ein und schreibt diesen in die temporäre Datei
 			bytes, err := tempFile.Write(readContent(file))
 			if err != nil {
 				log.Print(err, bytes, " Bytes wurden in die temporäre Datei geschrieben")
@@ -460,17 +455,27 @@ func createTempData() {
 	}
 }
 
+// readContent zum Lesen des Inhalts einer Datei
 func readContent(file *zip.File) []byte {
-	fc, err := file.Open()
-	check(err)
-	defer closeFile(fc)
 
-	content, err := ioutil.ReadAll(fc)
-	check(err)
+	// öffnet Zip-Datei und erzeugt einen ReadCloser
+	readCloser, err := file.Open()
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer readCloser.Close()
 
-	return content
+	// speichert Inhalt in einem byte-array
+	content, err := ioutil.ReadAll(readCloser)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	return content // Inhalt
 }
 
+// convertToTag konvertiert den Titel einer Page
+// in einen Tag ohne Sonderzeichen
 func convertToTag(pageTitle string) string {
 
 	pageTitle = strings.ToLower(pageTitle)
@@ -480,5 +485,5 @@ func convertToTag(pageTitle string) string {
 	pageTitle = strings.Replace(pageTitle, "ß", "ss", -1)
 	pageTitle = strings.Replace(pageTitle, " ", "", -1)
 
-	return pageTitle
+	return pageTitle // konvertierter Tag
 }
