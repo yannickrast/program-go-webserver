@@ -1,0 +1,18 @@
+{{ define "content" }}
+
+    <!-- article content -->
+    <div class="inner">
+
+        <!-- Video -->
+        <div class="video">
+
+            <center><iframe src='{{ .Page.Video }}' title='{{ .Page.Title }}' frameborder='0' allow='accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share' allowfullscreen></iframe></center>
+        </div>
+        <!-- Video-Ende -->
+
+        {{ .Page.Content }}
+
+    </div>
+    <!-- article content-end -->
+
+{{ end }}

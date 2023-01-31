@@ -51,6 +51,7 @@ type Page struct {
 	CustomCSS   string             `bson:"customCSS,omitempty"`    // spezifische CSS-Datei
 	CustomJS    string             `bson:"customScript,omitempty"` // spezifische JS-Datei
 	Images      []string           `bson:"images,omitempty"`       // Bilder der Page
+	Video       string             `bson:"video,omitempty"`        // YouTube Video der Page
 }
 
 type Pages []Page // Page-Array
@@ -82,10 +83,11 @@ var (
 	tmpDir = flag.String("tmp", "./templates", "Template -Dir.")  // Template-Verzeichnis
 	tprDir = flag.String("tpr", "./temporary", "Temporary -Dir.") // temporäres Verzeichnis
 
-	indexTemplate = "index.templ.html" // Index-Template-Bezeichnung
-	pageTemplate  = "page.templ.html"  // Page-Template-Bezeichnung
-	slideTemplate = "slide.templ.html" // Slide-Show-Template-Bezeichnung
-	baseTemplate  = "base.templ.html"  // Index-Template-Bezeichnung
+	indexTemplate = "index.templ.html"     // Index-Template-Bezeichnung
+	pageTemplate  = "page.templ.html"      // Page-Template-Bezeichnung
+	slideTemplate = "slideshow.templ.html" // Slide-Show-Template-Bezeichnung
+	videoTemplate = "video.templ.html"     // Video-Template-Bezeichnung
+	baseTemplate  = "base.templ.html"      // Index-Template-Bezeichnung
 
 	pageCollection *mongo.Collection // mongodb-Collection mit Pages
 	linkCollection *mongo.Collection // mongodb-Collection mit Links
@@ -249,9 +251,11 @@ func makePageHandler(pageType string) http.HandlerFunc {
 			data.ArticleLinks = articles
 		}
 
-		// prüft Page darauf, ob es sich um eine Slide-Show-Page handelt
+		// prüft Page darauf, ob es sich um eine Slide-Show-/Video-Page handelt
 		if len(page.Images) > 1 {
 			templateName = slideTemplate
+		} else if page.Video != "" {
+			templateName = videoTemplate
 		}
 
 		log.Println("Generiere Seite: ", page.Title) // log mit Page-Titel der generierten Seite
